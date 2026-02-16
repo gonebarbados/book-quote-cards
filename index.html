@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Quote Cards</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <meta name="theme-color" content="#4CAF50" />
+  <style>
+    :root{--bg:#f4f4f4;--card:#fff;--text:#111;--muted:#666;--brand:#4CAF50;--danger:#d9534f;--border:#ddd}
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:5;background:rgba(244,244,244,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+    .bar{max-width:980px;margin:0 auto;padding:10px 12px;display:flex;align-items:center;gap:10px;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:28px;height:28px;border-radius:7px}
+    .brand h1{font-size:16px;margin:0}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{border:1px solid var(--border);background:var(--card);padding:8px 10px;border-radius:10px;cursor:pointer;font-weight:700}
+    .btn.primary{background:var(--brand);color:#fff;border-color:transparent}
+    .btn.danger{background:var(--danger);color:#fff;border-color:transparent}
+    .btn:active{transform:translateY(1px)}
+    main{max-width:980px;margin:0 auto;padding:14px 12px 90px}
+    .notice{background:#fff;border:1px solid var(--border);padding:10px 12px;border-radius:12px;color:var(--muted);font-size:13px}
+    form{background:var(--card);border:1px solid var(--border);padding:14px;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);margin-top:12px}
+    .grid{display:grid;gap:10px}
+    @media(min-width:700px){.grid{grid-template-columns:1fr 1fr}}
+    label{display:block;font-weight:800;margin-bottom:6px}
+    input[type="text"],textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;font-size:16px;background:#fff}
+    textarea{resize:vertical;min-height:110px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .row-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .hint{font-size:12px;color:var(--muted)}
+    .cards{margin-top:14px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 22px rgba(0,0,0,.06)}
+    .card img{width:100%;height:auto;display:block}
+    .card-body{padding:12px 12px 10px}
+    .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+    .book{font-weight:900;margin:0;font-size:15px}
+    .author{margin:0;color:var(--muted);font-size:13px}
+    .quote{margin:10px 0 0;white-space:pre-wrap;line-height:1.35}
+    .card-actions{padding:10px 12px 12px;display:flex;gap:8px;flex-wrap:wrap}
+
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:12px;z-index:20}
+    .modal{width:min(720px,100%);background:#fff;border-radius:14px;border:1px solid var(--border);padding:14px}
+    .modal h2{margin:0 0 10px;font-size:16px}
+    .modal .two{display:grid;gap:10px}
+    @media(min-width:700px){.modal .two{grid-template-columns:1fr 1fr}}
+    .small{font-size:12px;color:var(--muted)}
+    .modal .footer{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+
+    .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:#fff;padding:6px 10px;border-radius:999px;font-weight:700}
+    progress{width:160px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <img src="icons/icon-192.png" alt="" />
+        <h1>Book Quote Cards</h1>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btn-settings" type="button">Settings</button>
+        <button class="btn" id="btn-export-json" type="button">Export</button>
+        <button class="btn" id="btn-import-json" type="button">Import</button>
+        <button class="btn danger" id="btn-clear" type="button">Clear</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="notice" id="status">Loading…</div>
+
+    <form id="quote-form">
+      <div class="grid">
+        <div>
+          <label for="book">Book title</label>
+          <input id="book" type="text" placeholder="e.g., The Brothers Karamazov" required />
+        </div>
+        <div>
+          <label for="author">Author (optional)</label>
+          <input id="author" type="text" placeholder="e.g., Fyodor Dostoevsky" />
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label for="quote">Quote</label>
+        <textarea id="quote" placeholder="Paste it, type it, or OCR from a photo…" required></textarea>
+        <div class="row" style="margin-top:10px">
+          <div class="row-left">
+            <input id="image" type="file" accept="image/*" />
+            <button class="btn" id="btn-ocr" type="button">OCR</button>
+            <span class="pill" id="ocr-pill" style="display:none">
+              <span id="ocr-label">OCR…</span>
+              <progress id="ocr-progress" value="0" max="1"></progress>
+            </span>
+          </div>
+          <button class="btn primary" type="submit">Add card</button>
+        </div>
+        <div class="hint">Stability tip: big photos can crash phones. This app auto-resizes images before saving.</div>
+      </div>
+    </form>
+
+    <div class="cards" id="cards"></div>
+  </main>
+
+  <div class="modal-backdrop" id="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Settings (share + sync)</h2>
+      <div class="two">
+        <div>
+          <label for="family">Family code</label>
+          <input id="family" type="text" placeholder="Pick a shared secret like: mou+wife+quotes" />
+          <div class="small">Use the same code on both phones to share the same library.</div>
+        </div>
+        <div>
+          <label>Sync</label>
+          <div class="small" style="margin-bottom:6px">Cloud sync lets both phones see the same cards.</div>
+          <label style="display:flex;gap:10px;align-items:center;font-weight:800">
+            <input id="sync" type="checkbox" /> Enable Supabase sync
+          </label>
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:10px">
+        <div>
+          <label for="sb-url">Supabase URL</label>
+          <input id="sb-url" type="text" placeholder="https://xxxxx.supabase.co" />
+        </div>
+        <div>
+          <label for="sb-key">Supabase anon key</label>
+          <input id="sb-key" type="text" placeholder="eyJhbGciOi…" />
+        </div>
+      </div>
+
+      <div class="small" style="margin-top:10px">
+        If you don’t want cloud sync yet, leave it off — the app will still work and save locally.
+      </div>
+
+      <div class="footer">
+        <button class="btn" id="btn-close" type="button">Close</button>
+        <button class="btn primary" id="btn-save" type="button">Save settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -----------------------------
+    // IndexedDB (more stable than localStorage for images)
+    // -----------------------------
+    const DB_NAME = 'bqc_db_v2';
+    const DB_VERSION = 1;
+    const STORE = 'cards';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(STORE)) {
+            db.createObjectStore(STORE, { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function dbGetAll() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const st = tx.objectStore(STORE);
+        const req = st.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function dbPut(card) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(card);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function dbDelete(id) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function dbClear() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    // -----------------------------
+    // Settings
+    // -----------------------------
+    const KEY_SETTINGS = 'bqc_settings_v2_fixed';
+    let settings = { family: '', sync: false, supabaseUrl: '', supabaseAnonKey: '' };
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(KEY_SETTINGS);
+        if (raw) settings = { ...settings, ...JSON.parse(raw) };
+      } catch {}
+    }
+    function saveSettings() {
+      localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings));
+    }
+
+    // -----------------------------
+    // Lazy loaders (prevents mobile crashes)
+    // -----------------------------
+    function loadScriptOnce(src) {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[data-src="${src}"]`)) return resolve();
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.dataset.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load ' + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensureSupabase() {
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+      return window.supabase;
+    }
+
+    async function ensureTesseract() {
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+      return window.Tesseract;
+    }
+
+    async function ensureHtml2Canvas() {
+      await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      return window.html2canvas;
+    }
+
+    // -----------------------------
+    // State
+    // -----------------------------
+    let cards = [];
+    let supabaseClient = null;
+
+    const $ = (id) => document.getElementById(id);
+    function setStatus(msg) { $('status').textContent = msg; }
+
+    function render() {
+      const container = $('cards');
+      container.innerHTML = '';
+      const sorted = [...cards].sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+      for (const c of sorted) container.appendChild(cardToElement(c));
+    }
+
+    function cardToElement(card) {
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.dataset.id = card.id;
+
+      if (card.image) {
+        const img = document.createElement('img');
+        img.src = card.image;
+        img.alt = '';
+        div.appendChild(img);
+      }
+
+      const body = document.createElement('div');
+      body.className = 'card-body';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+
+      const book = document.createElement('p');
+      book.className = 'book';
+      book.textContent = card.book;
+      meta.appendChild(book);
+
+      if (card.author) {
+        const author = document.createElement('p');
+        author.className = 'author';
+        author.textContent = card.author;
+        meta.appendChild(author);
+      }
+
+      const quote = document.createElement('p');
+      quote.className = 'quote';
+      quote.textContent = card.quote;
+
+      body.appendChild(meta);
+      body.appendChild(quote);
+      div.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+
+      const btnShare = document.createElement('button');
+      btnShare.className = 'btn';
+      btnShare.type = 'button';
+      btnShare.textContent = 'Share image';
+      btnShare.onclick = () => exportCardImage(card.id, true);
+
+      const btnSave = document.createElement('button');
+      btnSave.className = 'btn';
+      btnSave.type = 'button';
+      btnSave.textContent = 'Save image';
+      btnSave.onclick = () => exportCardImage(card.id, false);
+
+      const btnDelete = document.createElement('button');
+      btnDelete.className = 'btn danger';
+      btnDelete.type = 'button';
+      btnDelete.textContent = 'Delete';
+      btnDelete.onclick = () => deleteCard(card.id);
+
+      actions.appendChild(btnShare);
+      actions.appendChild(btnSave);
+      actions.appendChild(btnDelete);
+      div.appendChild(actions);
+
+      return div;
+    }
+
+    // -----------------------------
+    // Image processing (resize + compress for phone stability)
+    // -----------------------------
+    async function fileToCompressedDataURL(file, maxSide = 1280, quality = 0.78) {
+      // Read file -> Image
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ''));
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = dataUrl;
+      });
+
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const scale = Math.min(1, maxSide / Math.max(w, h));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(w * scale));
+      canvas.height = Math.max(1, Math.round(h * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // JPEG is smaller than PNG for photos
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+
+    // -----------------------------
+    // Supabase sync
+    // -----------------------------
+    async function initSupabase() {
+      supabaseClient = null;
+      if (!settings.sync) return;
+      if (!settings.supabaseUrl || !settings.supabaseAnonKey || !settings.family) return;
+      const sb = await ensureSupabase();
+      supabaseClient = sb.createClient(settings.supabaseUrl, settings.supabaseAnonKey);
+    }
+
+    async function pullFromCloud() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from('quotes')
+        .select('*')
+        .eq('family_code', settings.family)
+        .order('created_at', { ascending: false })
+        .limit(500);
+
+      if (error) {
+        setStatus('Sync pull error: ' + error.message + ' (using local)');
+        return;
+      }
+
+      const cloud = (data || []).map((r) => ({
+        id: r.id,
+        family: r.family_code,
+        book: r.book_title,
+        author: r.author || '',
+        quote: r.quote_text,
+        image: r.image_data || null,
+        createdAt: r.created_at ? Date.parse(r.created_at) : Date.now()
+      }));
+
+      // Cloud wins
+      const map = new Map(cards.map((c)=>[c.id,c]));
+      for (const c of cloud) map.set(c.id, c);
+      cards = Array.from(map.values());
+
+      // Persist to IndexedDB
+      for (const c of cards) await dbPut(c);
+
+      render();
+      setStatus(`Synced. ${cards.length} cards.`);
+    }
+
+    async function pushToCloud(card) {
+      if (!supabaseClient) return;
+      const payload = {
+        id: card.id,
+        family_code: settings.family,
+        book_title: card.book,
+        author: card.author || null,
+        quote_text: card.quote,
+        image_data: card.image || null
+      };
+
+      const { error } = await supabaseClient.from('quotes').upsert(payload, { onConflict: 'id' });
+      if (error) setStatus('Sync push error: ' + error.message + ' (saved locally)');
+    }
+
+    async function deleteFromCloud(id) {
+      if (!supabaseClient) return;
+      const { error } = await supabaseClient.from('quotes').delete().eq('id', id);
+      if (error) setStatus('Cloud delete error: ' + error.message);
+    }
+
+    // -----------------------------
+    // CRUD
+    // -----------------------------
+    async function addCard({book, author, quote, image}) {
+      const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
+      const card = { id, family: settings.family, book, author, quote, image, createdAt: Date.now() };
+      cards.unshift(card);
+      await dbPut(card);
+      render();
+      setStatus('Saved locally.');
+      await pushToCloud(card);
+      if (supabaseClient) setStatus('Saved + synced.');
+    }
+
+    async function deleteCard(id) {
+      if (!confirm('Delete this card?')) return;
+      cards = cards.filter((c)=>c.id !== id);
+      await dbDelete(id);
+      render();
+      await deleteFromCloud(id);
+      setStatus('Deleted.');
+    }
+
+    async function clearAll() {
+      if (!confirm('Clear ALL cards on this device? (Cloud data stays unless you delete cards individually.)')) return;
+      cards = [];
+      await dbClear();
+      render();
+      setStatus('Cleared local cards.');
+    }
+
+    // -----------------------------
+    // Export card image
+    // -----------------------------
+    async function exportCardImage(cardId, tryShare) {
+      const el = document.querySelector(`.card[data-id="${CSS.escape(cardId)}"]`);
+      if (!el) return;
+
+      const html2canvas = await ensureHtml2Canvas();
+
+      // Hide buttons during export
+      const actions = el.querySelector('.card-actions');
+      const prev = actions.style.display;
+      actions.style.display = 'none';
+
+      const canvas = await html2canvas(el, { scale: 2 });
+      actions.style.display = prev;
+
+      const blob = await new Promise((resolve)=>canvas.toBlob(resolve, 'image/png'));
+      if (!blob) return;
+
+      const file = new File([blob], 'quote-card.png', { type: 'image/png' });
+
+      if (tryShare && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Quote card' });
+          return;
+        } catch {}
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'quote-card.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // -----------------------------
+    // Export / Import
+    // -----------------------------
+    async function exportJSON() {
+      const payload = { version: '2-fixed', exportedAt: new Date().toISOString(), cards };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'book-quote-cards.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importJSONFile(file) {
+      const text = await file.text();
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { alert('Invalid JSON'); return; }
+      const imported = Array.isArray(parsed.cards) ? parsed.cards : [];
+
+      const map = new Map(cards.map((c)=>[c.id,c]));
+      for (const c of imported) {
+        if (!c || !c.id) continue;
+        map.set(c.id, c);
+      }
+      cards = Array.from(map.values());
+
+      // Persist
+      for (const c of cards) await dbPut(c);
+
+      render();
+      setStatus('Imported.');
+
+      if (supabaseClient && settings.family) {
+        setStatus('Syncing import…');
+        for (const c of imported) { if (c && c.id) await pushToCloud(c); }
+        await pullFromCloud();
+      }
+    }
+
+    // -----------------------------
+    // OCR (lazy-load + progress)
+    // -----------------------------
+    async function runOCR() {
+      const input = $('image');
+      if (!input.files || !input.files[0]) { alert('Pick an image first.'); return; }
+
+      const pill = $('ocr-pill');
+      const prog = $('ocr-progress');
+      const label = $('ocr-label');
+      pill.style.display = 'inline-flex';
+      prog.value = 0;
+      label.textContent = 'OCR…';
+
+      setStatus('OCR running…');
+
+      try {
+        const Tesseract = await ensureTesseract();
+
+        // Use a blob URL to avoid holding full base64 in memory
+        const url = URL.createObjectURL(input.files[0]);
+
+        const result = await Tesseract.recognize(url, 'eng', {
+          logger: (m) => {
+            if (m && m.status) label.textContent = m.status;
+            if (m && typeof m.progress === 'number') prog.value = m.progress;
+          }
+        });
+
+        URL.revokeObjectURL(url);
+
+        const text = result?.data?.text ? result.data.text.trim() : '';
+        if (text) {
+          $('quote').value = text;
+          setStatus('OCR done. Edit if needed, then tap “Add card”.');
+        } else {
+          setStatus('OCR finished, but no text found. Try a clearer photo.');
+        }
+      } catch (e) {
+        setStatus('OCR failed. Try a clearer photo or smaller image.');
+      } finally {
+        setTimeout(()=>{ $('ocr-pill').style.display = 'none'; }, 1200);
+      }
+    }
+
+    // -----------------------------
+    // Modal
+    // -----------------------------
+    function openModal() {
+      $('modal-backdrop').style.display = 'flex';
+      $('family').value = settings.family || '';
+      $('sync').checked = !!settings.sync;
+      $('sb-url').value = settings.supabaseUrl || '';
+      $('sb-key').value = settings.supabaseAnonKey || '';
+    }
+    function closeModal() { $('modal-backdrop').style.display = 'none'; }
+
+    async function applySettingsFromModal() {
+      settings.family = $('family').value.trim();
+      settings.sync = $('sync').checked;
+      settings.supabaseUrl = $('sb-url').value.trim();
+      settings.supabaseAnonKey = $('sb-key').value.trim();
+      saveSettings();
+
+      await initSupabase();
+
+      if (supabaseClient) {
+        setStatus('Sync enabled. Pulling from cloud…');
+        await pullFromCloud();
+      } else {
+        setStatus('Settings saved. Using local storage.');
+      }
+      closeModal();
+    }
+
+    // -----------------------------
+    // Boot
+    // -----------------------------
+    async function boot() {
+      loadSettings();
+
+      // Load from IndexedDB first
+      try {
+        cards = await dbGetAll();
+      } catch {
+        cards = [];
+      }
+      render();
+
+      // Register SW
+      if ('serviceWorker' in navigator) {
+        try { await navigator.serviceWorker.register('./sw.js'); } catch {}
+      }
+
+      // Init supabase only if requested (lazy-load)
+      if (settings.sync && settings.supabaseUrl && settings.supabaseAnonKey && settings.family) {
+        setStatus('Preparing sync…');
+        await initSupabase();
+        if (supabaseClient) {
+          setStatus('Syncing…');
+          await pullFromCloud();
+        } else {
+          setStatus('Ready (local). Open Settings to enable sync.');
+        }
+      } else {
+        setStatus('Ready. Cards save on this phone. To share with your wife: Settings → enable sync.');
+      }
+
+      // Wiring
+      $('btn-settings').onclick = openModal;
+      $('btn-close').onclick = closeModal;
+      $('modal-backdrop').onclick = (e)=>{ if (e.target === $('modal-backdrop')) closeModal(); };
+      $('btn-save').onclick = applySettingsFromModal;
+
+      $('btn-clear').onclick = clearAll;
+      $('btn-export-json').onclick = exportJSON;
+      $('btn-import-json').onclick = () => {
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'application/json';
+        inp.onchange = () => { if (inp.files && inp.files[0]) importJSONFile(inp.files[0]); };
+        inp.click();
+      };
+
+      $('btn-ocr').onclick = runOCR;
+
+      $('quote-form').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const book = $('book').value.trim();
+        const author = $('author').value.trim();
+        const quote = $('quote').value.trim();
+        if (!book || !quote) { alert('Please enter a book title and quote.'); return; }
+
+        const imgInput = $('image');
+        let imageData = null;
+        if (imgInput.files && imgInput.files[0]) {
+          try {
+            // Resize+compress to reduce crashes
+            imageData = await fileToCompressedDataURL(imgInput.files[0]);
+          } catch {
+            alert('Could not process that image. Try a smaller file.');
+          }
+        }
+
+        await addCard({ book, author, quote, image: imageData });
+        $('quote-form').reset();
+      });
+    }
+
+    boot();
+  </script>
+</body>
+</html>
