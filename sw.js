@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bqc-v2-fixed-1';
+const CACHE_NAME = 'bqc-v2-fixed-2';
 const CORE = [
   './',
   './index.html',
@@ -9,27 +9,38 @@ const CORE = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((c)=>c.addAll(CORE)));
+  event.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(CORE)));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys)=>Promise.all(keys.map((k)=>k===CACHE_NAME?null:caches.delete(k))))
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k))))
+    )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  // Cache-first for same-origin GET
-  if (req.method === 'GET') {
-    event.respondWith(
-      caches.match(req).then((cached)=> cached || fetch(req).then((res)=>{
+  const url = new URL(req.url);
+
+  // Only handle http/https
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  // Only cache same-origin GET requests (prevents caching Supabase + extension requests)
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req).then((res) => {
+        if (!res || res.status !== 200) return res;
         const copy = res.clone();
-        caches.open(CACHE_NAME).then((c)=>c.put(req, copy));
+        caches.open(CACHE_NAME).then((c) => c.put(req, copy));
         return res;
-      }).catch(()=>cached))
-    );
-  }
+      });
+    })
+  );
 });
